@@ -18,6 +18,7 @@ This service is **completely separate** from the HRMS application and is respons
 - Python 3.8+
 - PostgreSQL 12+
 - Access to the HRMS Alembic configuration file
+- Node.js 18+ (for frontend, optional)
 
 ## Installation
 
@@ -82,16 +83,47 @@ This will create the `tenants` table in the `super_admin_db` to store tenant met
 
 ## Running the Application
 
+### Backend (FastAPI)
+
 Start the FastAPI server:
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 The API will be available at:
-- **API:** http://localhost:8000
-- **Interactive Docs:** http://localhost:8000/docs
-- **Alternative Docs:** http://localhost:8000/redoc
+- **API:** http://localhost:8001
+- **Interactive Docs:** http://localhost:8001/docs
+- **Alternative Docs:** http://localhost:8001/redoc
+
+### Frontend (Next.js) - Optional
+
+A modern React/Next.js admin dashboard is included in the `frontend/` directory.
+
+1. **Navigate to frontend directory:**
+   ```bash
+   cd frontend
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Create environment file:**
+   ```bash
+   echo "NEXT_PUBLIC_API_URL=http://localhost:8001" > .env.local
+   ```
+
+4. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open your browser:**
+   Navigate to http://localhost:3000
+
+See `frontend/README.md` for detailed frontend documentation.
 
 ## API Endpoints
 
@@ -147,7 +179,7 @@ Creates a new tenant database, runs HRMS migrations, and seeds an initial admin 
 
 **Example using curl:**
 ```bash
-curl -X POST "http://localhost:8000/super-admin/create-tenant" \
+curl -X POST "http://localhost:8001/super-admin/create-tenant" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Acme Corporation",

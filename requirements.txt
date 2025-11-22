@@ -8,3 +8,12 @@ pydantic-settings==2.1.0
 python-dotenv==1.0.0
 passlib[bcrypt]==1.7.4
 
+# HRMS backend dependencies (required for running HRMS migrations)
+httpx>=0.24.0
+psycopg[binary]==3.2.12  # HRMS uses psycopg v3, different from psycopg2
+python-jose==3.3.0
+email-validator==2.1.0.post1
+python-dateutil==2.9.0.post0
+annotated-types==0.7.0
+typing-extensions==4.10.0
+

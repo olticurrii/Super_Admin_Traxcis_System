@@ -36,3 +36,25 @@ class TenantInfo(BaseModel):
     class Config:
         from_attributes = True
 
+
+class TenantByEmailResponse(BaseModel):
+    """Schema for tenant lookup by email response."""
+    tenant_id: int
+    db_url: str
+    company_name: str
+    
+    class Config:
+        from_attributes = True
+
+
+class TenantByIdResponse(BaseModel):
+    """Schema for tenant lookup by ID response."""
+    id: int
+    tenant_id: int
+    db_url: str
+    company_name: str
+    admin_email: str
+    
+    class Config:
+        from_attributes = True
+

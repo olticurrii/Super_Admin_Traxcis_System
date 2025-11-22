@@ -11,6 +11,9 @@ from app.security import hash_password
 from app.utils import generate_secure_password
 from app.config import settings
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/super-admin", tags=["super-admin"])
 
@@ -69,6 +72,9 @@ async def create_tenant(
     except Exception as e:
         # If any step fails, we should ideally rollback, but database creation
         # and migrations are harder to rollback. Log the error for manual cleanup.
+        import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"Failed to create tenant: {str(e)}\n{error_trace}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create tenant: {str(e)}"
