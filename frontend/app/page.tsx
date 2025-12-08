@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import TenantForm from '@/components/TenantForm';
 import TenantCard from '@/components/TenantCard';
+import TenantList from '@/components/TenantList';
 import { TenantResponse } from '@/lib/types';
 import { Database, Shield, Zap, AlertCircle } from 'lucide-react';
 import { healthCheck } from '@/lib/api';
@@ -10,6 +11,7 @@ import { healthCheck } from '@/lib/api';
 export default function Home() {
   const [createdTenant, setCreatedTenant] = useState<TenantResponse | null>(null);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [refreshTenantList, setRefreshTenantList] = useState(0);
 
   useEffect(() => {
     const checkBackend = async () => {
@@ -25,6 +27,8 @@ export default function Home() {
 
   const handleTenantCreated = (tenant: TenantResponse) => {
     setCreatedTenant(tenant);
+    // Trigger a refresh of the tenant list
+    setRefreshTenantList(prev => prev + 1);
   };
 
   return (
@@ -169,6 +173,11 @@ export default function Home() {
               <span>Tenant metadata is stored in the central super_admin_db.</span>
             </li>
           </ul>
+        </div>
+
+        {/* Tenant List Section */}
+        <div className="mt-10">
+          <TenantList key={refreshTenantList} />
         </div>
       </main>
 

@@ -12,6 +12,10 @@ This service is **completely separate** from the HRMS application and is respons
 - ✅ Storing tenant connection information in a central `super_admin_db`
 - ✅ Generating secure random passwords for tenant admins
 - ✅ Returning the password **ONCE** (never stored permanently)
+- ✅ **NEW:** Listing all tenant databases with details
+- ✅ **NEW:** Search and filter tenants by name, email, database, status
+- ✅ **NEW:** Enable/Disable tenants (soft disable without data loss)
+- ✅ **NEW:** Delete tenant records with confirmation
 
 ## System Requirements
 
@@ -187,6 +191,109 @@ curl -X POST "http://localhost:8001/super-admin/create-tenant" \
   }'
 ```
 
+### List Tenants ✨ NEW
+
+**GET /super-admin/tenants**
+
+Retrieves a list of all tenant databases with their details.
+
+**Query Parameters:**
+- `skip` (optional, default=0): Number of records to skip (pagination)
+- `limit` (optional, default=100): Maximum number of records to return
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "name": "Acme Corporation",
+    "db_name": "tenant_acme_corporation_1699123456",
+    "db_host": "localhost",
+    "db_port": "5432",
+    "db_user": "postgres",
+    "admin_email": "admin@acme.com",
+    "status": "active",
+    "created_at": "2025-12-07T10:30:00"
+  }
+]
+```
+
+**Example using curl:**
+```bash
+# Get all tenants
+curl http://localhost:8001/super-admin/tenants
+
+# Get tenants with pagination
+curl "http://localhost:8001/super-admin/tenants?skip=0&limit=10"
+```
+
+### Delete Tenant ✨ NEW
+
+**DELETE /super-admin/tenants/{tenant_id}**
+
+Deletes a tenant record from the super_admin database.
+
+**Important:** This only removes the tenant record. The actual PostgreSQL database is NOT automatically deleted for safety reasons.
+
+**Path Parameters:**
+- `tenant_id`: The ID of the tenant to delete
+
+**Response:**
+```json
+{
+  "message": "Tenant record deleted successfully",
+  "tenant_id": 5,
+  "db_name": "tenant_acme_corporation_1699123456",
+  "note": "The PostgreSQL database was not automatically deleted. Manual cleanup may be required."
+}
+```
+
+**Error Responses:**
+- `404 NOT FOUND`: Tenant with the specified ID does not exist
+- `500 INTERNAL SERVER ERROR`: Server error during deletion
+
+**Example using curl:**
+```bash
+# Delete tenant with ID 5
+curl -X DELETE http://localhost:8001/super-admin/tenants/5
+```
+
+### Toggle Tenant Status ✨ NEW
+
+**PATCH /super-admin/tenants/{tenant_id}/toggle-status**
+
+Toggles tenant status between 'active' and 'inactive'. This is a **soft disable** that prevents users from logging in without deleting any data.
+
+**Path Parameters:**
+- `tenant_id`: The ID of the tenant to toggle
+
+**Response:**
+```json
+{
+  "id": 5,
+  "name": "Acme Corporation",
+  "db_name": "tenant_acme_corporation_1699123456",
+  "status": "inactive",
+  "admin_email": "admin@acme.com",
+  "db_host": "localhost",
+  "db_port": "5432",
+  "db_user": "postgres",
+  "created_at": "2025-12-07T10:30:00"
+}
+```
+
+**Key Features:**
+- ✅ No data is deleted
+- ✅ Database remains intact
+- ✅ Instantly reversible
+- ✅ Users cannot login when inactive (requires HRMS integration)
+
+**Example using curl:**
+```bash
+# Toggle status (active → inactive or inactive → active)
+curl -X PATCH http://localhost:8001/super-admin/tenants/5/toggle-status
+```
+
 ## How Provisioning Works
 
 When you call `/super-admin/create-tenant`, the service performs the following steps:
@@ -334,4 +441,20 @@ This is a proprietary service for managing HRMS tenant databases.
 ## Support
 
 For issues or questions, please contact the development team.
+
+## New Features Documentation
+
+For detailed documentation on the new features:
+
+- **Tenant List Component**: See `TENANT_LIST_FEATURE.md` for information about the tenant listing interface
+- **Search, Filter, and Delete**: See `SEARCH_FILTER_DELETE_GUIDE.md` for comprehensive guide on:
+  - Search functionality across multiple fields
+  - Status filtering (All/Active/Inactive)
+  - Delete tenant records with confirmation
+  - Database cleanup procedures
+- **Enable/Disable Tenants**: See `ENABLE_DISABLE_FEATURE.md` for comprehensive guide on:
+  - Safely disabling tenants without data loss
+  - Toggle between active and inactive states
+  - Visual indicators for disabled tenants
+  - Implementing login blocking in HRMS
 
