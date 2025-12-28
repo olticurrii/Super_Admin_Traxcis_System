@@ -2,7 +2,10 @@
 from passlib.context import CryptContext
 
 # Configure password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt_sha256"],  # handles >72 byte passwords safely
+    deprecated="auto",
+)
 
 
 def hash_password(password: str) -> str:
