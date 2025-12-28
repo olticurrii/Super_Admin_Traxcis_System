@@ -28,8 +28,9 @@ def run_tenant_migrations(db_url: str) -> None:
     """
     # Get the path to tenant_migrations/alembic.ini
     # Use absolute path to ensure it works from any directory
-    base_dir = Path(__file__).resolve().parent.parent
-    alembic_ini_path = base_dir / "tenant_migrations" / "alembic.ini"
+    project_root = Path(__file__).resolve().parents[2]  # repo root
+    alembic_ini_path = project_root / "tenant_migrations" / "alembic.ini"
+
     
     if not alembic_ini_path.exists():
         raise FileNotFoundError(
@@ -55,7 +56,8 @@ def run_tenant_migrations(db_url: str) -> None:
             capture_output=True,
             text=True,
             check=True,
-            cwd=str(base_dir)  # Run from project root
+            cwd=str(project_root)
+  # Run from project root
         )
         
         logger.info("Migration subprocess completed successfully")
