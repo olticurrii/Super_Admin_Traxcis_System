@@ -4,15 +4,9 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_super_admin_db
 from app.superadmin.schemas import TenantCreate, TenantResponse, TenantInfo
-from app.superadmin.service import (
-    create_tenant_record, 
-    list_tenants, 
-    delete_tenant_record,
-    toggle_tenant_status,
-    update_tenant_status
-)
+from app.superadmin.service import create_tenant_record, list_tenants, delete_tenant_record, toggle_tenant_status, update_tenant_status
 from app.hrms_provisioning.database_creator import create_database
-from app.hrms_provisioning.run_migrations import run_hrms_migrations
+from app.hrms_provisioning.run_migrations import run_tenant_migrations
 from app.hrms_provisioning.seed_admin import seed_initial_admin
 from app.security import hash_password
 from app.utils import generate_secure_password
@@ -35,11 +29,12 @@ async def create_tenant(
     
     This endpoint:
     1. Creates a new PostgreSQL database for the tenant
-    2. Runs HRMS Alembic migrations on the new database
+    2. Runs tenant schema migrations on the new database
     3. Seeds an initial admin user
     4. Stores tenant metadata in super_admin_db
     5. Returns the initial admin password (shown only once)
     """
+    tenant = None
     try:
         # Generate unique database name
         db_name = f"tenant_{tenant_data.name.lower().replace(' ', '_')}_{int(time.time())}"
@@ -48,19 +43,45 @@ async def create_tenant(
         db_url = f"postgresql+psycopg2://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{db_name}"
         
         # Step 1: Create the database
+        logger.info(f"Creating database: {db_name}")
         create_database(db_name)
         
-        # Step 2: Run HRMS migrations
-        run_hrms_migrations(db_url)
+        # Step 2: Run tenant migrations (uses subprocess, no HRMS imports)
+        logger.info(f"Running tenant migrations on: {db_name}")
+        try:
+            run_tenant_migrations(db_url)
+        except Exception as migration_error:
+            logger.error(f"Migration failed: {str(migration_error)}")
+            # Mark tenant as failed if we created the record
+            if tenant:
+                tenant.status = "migration_failed"
+                db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to run migrations: {str(migration_error)}"
+            )
         
         # Step 3: Generate secure random password for admin
         initial_password = generate_secure_password(12)
         hashed_password = hash_password(initial_password)
         
         # Step 4: Seed initial admin user
-        seed_initial_admin(db_url, tenant_data.admin_email, hashed_password)
+        logger.info(f"Seeding admin user in: {db_name}")
+        try:
+            seed_initial_admin(db_url, tenant_data.admin_email, hashed_password)
+        except Exception as seed_error:
+            logger.error(f"Failed to seed admin user: {str(seed_error)}")
+            # Mark tenant as failed
+            if tenant:
+                tenant.status = "seed_failed"
+                db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to seed admin user: {str(seed_error)}"
+            )
         
         # Step 5: Save tenant record in super_admin_db
+        logger.info(f"Creating tenant record for: {tenant_data.name}")
         tenant = create_tenant_record(
             db=db,
             name=tenant_data.name,
@@ -69,6 +90,7 @@ async def create_tenant(
         )
         
         # Step 6: Return response with initial password (never stored in plaintext)
+        logger.info(f"Successfully created tenant: {tenant_data.name} (ID: {tenant.id})")
         return TenantResponse(
             tenant_id=tenant.id,
             tenant_db=db_name,
@@ -76,12 +98,22 @@ async def create_tenant(
             initial_password=initial_password
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        # If any step fails, we should ideally rollback, but database creation
-        # and migrations are harder to rollback. Log the error for manual cleanup.
+        # Log the full error for debugging
         import traceback
         error_trace = traceback.format_exc()
         logger.error(f"Failed to create tenant: {str(e)}\n{error_trace}")
+        
+        # Mark tenant as failed if record exists
+        if tenant:
+            try:
+                tenant.status = "failed"
+                db.commit()
+            except Exception as update_error:
+                logger.error(f"Failed to update tenant status: {str(update_error)}")
+        
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create tenant: {str(e)}"
