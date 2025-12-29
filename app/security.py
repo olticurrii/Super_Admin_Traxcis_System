@@ -1,16 +1,10 @@
 """Security utilities for password hashing and verification."""
-from passlib.context import CryptContext
-
-# Configure password hashing context
-pwd_context = CryptContext(
-    schemes=["bcrypt"],  # Use plain bcrypt
-    deprecated="auto",
-)
+import bcrypt
 
 
 def hash_password(password: str) -> str:
     """
-    Hash a password using bcrypt.
+    Hash a password using bcrypt directly.
     
     Args:
         password: Plain text password
@@ -27,10 +21,15 @@ def hash_password(password: str) -> str:
     # Bcrypt has a 72-byte limit. Truncate if longer.
     password_bytes = password.encode('utf-8')
     if len(password_bytes) > 72:
-        # Truncate to 72 bytes
-        password = password_bytes[:72].decode('utf-8', errors='ignore')
+        # Truncate to exactly 72 bytes
+        password_bytes = password_bytes[:72]
     
-    return pwd_context.hash(password)
+    # Hash the password
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    
+    # Return as string
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -44,11 +43,18 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches, False otherwise
     """
+    if not plain_password or not hashed_password:
+        return False
+    
     # Truncate password if needed before verification
     password_bytes = plain_password.encode('utf-8')
     if len(password_bytes) > 72:
-        plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
+        password_bytes = password_bytes[:72]
     
-    return pwd_context.verify(plain_password, hashed_password)
+    # Convert hashed_password to bytes if it's a string
+    if isinstance(hashed_password, str):
+        hashed_password = hashed_password.encode('utf-8')
+    
+    return bcrypt.checkpw(password_bytes, hashed_password)
 
 
