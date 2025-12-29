@@ -7,6 +7,7 @@ from app.tenants.router import router as tenants_router
 from app.database import init_db
 import logging
 import traceback
+import os
 
 # Configure logging
 logging.basicConfig(
@@ -22,16 +23,27 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# CORS origins - combine default with environment variable
+cors_origins = [
+    # Local development
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    # Production - Vercel frontend
+    "https://super-admin-traxcis-system.vercel.app",
+]
+
+# Add additional origins from environment variable (for Vercel preview deployments)
+additional_origins = os.getenv("CORS_ORIGINS", "")
+if additional_origins:
+    cors_origins.extend([origin.strip() for origin in additional_origins.split(",") if origin.strip()])
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",  # HRMS backend
-        "http://127.0.0.1:8000",  # HRMS backend
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
