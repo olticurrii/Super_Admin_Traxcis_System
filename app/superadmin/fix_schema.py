@@ -53,15 +53,23 @@ def fix_tenant_schema(db_name: str) -> dict:
             column_exists = result.scalar()
             
             if column_exists:
-                return {
-                    "status": "success",
-                    "message": f"is_admin column already exists in {db_name}"
-                }
+                # Still run the full fix to ensure all columns exist
+                pass
             
-            # Add is_admin column
+            # Add ALL missing columns from HRMS backend User model
             connection.execute(text("""
                 ALTER TABLE users 
-                ADD COLUMN is_admin BOOLEAN DEFAULT false NOT NULL;
+                ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false NOT NULL,
+                ADD COLUMN IF NOT EXISTS job_role VARCHAR,
+                ADD COLUMN IF NOT EXISTS department_id INTEGER,
+                ADD COLUMN IF NOT EXISTS manager_id INTEGER,
+                ADD COLUMN IF NOT EXISTS avatar_url VARCHAR,
+                ADD COLUMN IF NOT EXISTS phone VARCHAR,
+                ADD COLUMN IF NOT EXISTS hire_date DATE,
+                ADD COLUMN IF NOT EXISTS timezone VARCHAR DEFAULT 'UTC',
+                ADD COLUMN IF NOT EXISTS locale VARCHAR DEFAULT 'en',
+                ADD COLUMN IF NOT EXISTS theme VARCHAR DEFAULT 'light',
+                ADD COLUMN IF NOT EXISTS email_notifications BOOLEAN DEFAULT true NOT NULL;
             """))
             
             # Update admin users
@@ -74,11 +82,11 @@ def fix_tenant_schema(db_name: str) -> dict:
             
             connection.commit()
             
-            logger.info(f"Added is_admin column to {db_name}, updated {updated_count} admin users")
+            logger.info(f"Added all missing columns to {db_name}, updated {updated_count} admin users")
             
             return {
                 "status": "success",
-                "message": f"Added is_admin column to {db_name}, updated {updated_count} admin users"
+                "message": f"Added all missing columns to {db_name}, updated {updated_count} admin users"
             }
             
     except Exception as e:

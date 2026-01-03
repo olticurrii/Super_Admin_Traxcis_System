@@ -17,16 +17,26 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create users table
+    # Create users table with ALL columns from HRMS backend
     op.create_table('users',
         sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('tenant_id', sa.Integer(), nullable=True),
         sa.Column('email', sa.String(), nullable=False),
         sa.Column('full_name', sa.String(), nullable=False),
         sa.Column('hashed_password', sa.String(), nullable=False),
         sa.Column('role', sa.String(), nullable=False),
-        sa.Column('is_active', sa.Boolean(), server_default='true', nullable=False),
         sa.Column('is_admin', sa.Boolean(), server_default='false', nullable=False),
-        sa.Column('tenant_id', sa.Integer(), nullable=True),
+        sa.Column('is_active', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('job_role', sa.String(), nullable=True),
+        sa.Column('department_id', sa.Integer(), nullable=True),
+        sa.Column('manager_id', sa.Integer(), nullable=True),
+        sa.Column('avatar_url', sa.String(), nullable=True),
+        sa.Column('phone', sa.String(), nullable=True),
+        sa.Column('hire_date', sa.Date(), nullable=True),
+        sa.Column('timezone', sa.String(), server_default='UTC', nullable=True),
+        sa.Column('locale', sa.String(), server_default='en', nullable=True),
+        sa.Column('theme', sa.String(), server_default='light', nullable=True),
+        sa.Column('email_notifications', sa.Boolean(), server_default='true', nullable=False),
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
         sa.PrimaryKeyConstraint('id')
