@@ -72,10 +72,16 @@ def fix_tenant_schema(db_name: str) -> dict:
                 ADD COLUMN IF NOT EXISTS email_notifications BOOLEAN DEFAULT true NOT NULL;
             """))
             
-            # Update admin users
+            # Update admin users and set tenant_id to 1 (each tenant DB is isolated)
+            # Set default values for nullable fields
             result = connection.execute(text("""
                 UPDATE users 
-                SET is_admin = true 
+                SET is_admin = true,
+                    tenant_id = COALESCE(tenant_id, 1),
+                    timezone = COALESCE(timezone, 'UTC'),
+                    locale = COALESCE(locale, 'en'),
+                    theme = COALESCE(theme, 'light'),
+                    email_notifications = COALESCE(email_notifications, true)
                 WHERE role = 'admin';
             """))
             updated_count = result.rowcount

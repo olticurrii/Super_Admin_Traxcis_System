@@ -60,11 +60,17 @@ def seed_initial_admin(db_url: str, admin_email: str, hashed_password: str) -> N
             email_name = admin_email.split('@')[0] if '@' in admin_email else "Admin"
             full_name = email_name.replace('.', ' ').replace('_', ' ').title() or "Admin User"
             
-            # Insert admin user
+            # Insert admin user with all required fields
             connection.execute(
                 text("""
-                    INSERT INTO users (email, full_name, hashed_password, role, is_active, is_admin)
-                    VALUES (:email, :full_name, :hashed_password, :role, :is_active, :is_admin)
+                    INSERT INTO users (
+                        email, full_name, hashed_password, role, is_active, is_admin,
+                        tenant_id, timezone, locale, theme, email_notifications
+                    )
+                    VALUES (
+                        :email, :full_name, :hashed_password, :role, :is_active, :is_admin,
+                        :tenant_id, :timezone, :locale, :theme, :email_notifications
+                    )
                 """),
                 {
                     "email": admin_email,
@@ -72,7 +78,12 @@ def seed_initial_admin(db_url: str, admin_email: str, hashed_password: str) -> N
                     "hashed_password": hashed_password,
                     "role": "admin",
                     "is_active": True,
-                    "is_admin": True
+                    "is_admin": True,
+                    "tenant_id": 1,  # Default tenant_id for isolated tenant DB
+                    "timezone": "UTC",
+                    "locale": "en",
+                    "theme": "light",
+                    "email_notifications": True
                 }
             )
             connection.commit()
