@@ -586,19 +586,35 @@ def upgrade() -> None:
     # CONFIGURATION
     # ============================================
     
-    # Organization settings table
+    # Organization settings table (single-row table with all settings as columns)
     op.create_table('organization_settings',
         sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('key', sa.String(), nullable=False),
-        sa.Column('value', sa.String(), nullable=True),
-        sa.Column('description', sa.String(), nullable=True),
-        sa.Column('category', sa.String(), nullable=True),
-        sa.Column('data_type', sa.String(), server_default='string', nullable=False),
-        sa.Column('is_public', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('allow_breaks', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('require_documentation', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('orgchart_show_unassigned_panel', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('orgchart_manager_subtree_edit', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('orgchart_department_colors', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('orgchart_compact_view', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('orgchart_show_connectors', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('feedback_allow_anonymous', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('feedback_enable_threading', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('feedback_enable_moderation', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('feedback_notify_managers', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('feedback_weekly_digest', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('performance_module_enabled', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('performance_allow_self_goals', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('performance_require_goal_approval', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('performance_enable_peer_reviews', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('performance_allow_anonymous_peer', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('performance_show_kpi_trends', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('performance_top_performer_threshold', sa.Integer(), server_default='80', nullable=False),
+        sa.Column('performance_monthly_reports', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('email_notifications_enabled', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('inapp_notifications_enabled', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('daily_summary_enabled', sa.Boolean(), server_default='false', nullable=False),
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-        sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('key')
+        sa.PrimaryKeyConstraint('id')
     )
 
 
