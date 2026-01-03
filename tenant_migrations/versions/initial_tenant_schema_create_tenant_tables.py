@@ -113,8 +113,66 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_leave_requests_id'), 'leave_requests', ['id'], unique=False)
 
+    # Create notifications table
+    op.create_table('notifications',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('user_id', sa.Integer(), nullable=False),
+        sa.Column('type', sa.String(), nullable=False),
+        sa.Column('title', sa.String(), nullable=False),
+        sa.Column('message', sa.String(), nullable=True),
+        sa.Column('data', sa.JSON(), nullable=True),
+        sa.Column('is_read', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+        sa.Column('read_at', sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+        sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_notifications_id'), 'notifications', ['id'], unique=False)
+
+    # Create projects table
+    op.create_table('projects',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('title', sa.String(), nullable=False),
+        sa.Column('description', sa.String(), nullable=True),
+        sa.Column('created_by', sa.Integer(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+        sa.ForeignKeyConstraint(['created_by'], ['users.id'], ),
+        sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_projects_id'), 'projects', ['id'], unique=False)
+
+    # Create tasks table
+    op.create_table('tasks',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('title', sa.String(), nullable=False),
+        sa.Column('description', sa.String(), nullable=True),
+        sa.Column('status', sa.String(), server_default='todo', nullable=False),
+        sa.Column('priority', sa.String(), server_default='medium', nullable=False),
+        sa.Column('assignee_id', sa.Integer(), nullable=True),
+        sa.Column('assignee', sa.String(), nullable=True),
+        sa.Column('created_by', sa.Integer(), nullable=False),
+        sa.Column('project_id', sa.Integer(), nullable=True),
+        sa.Column('position', sa.Integer(), server_default='0', nullable=False),
+        sa.Column('due_date', sa.DateTime(), nullable=True),
+        sa.Column('completed_at', sa.DateTime(), nullable=True),
+        sa.Column('is_private', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+        sa.ForeignKeyConstraint(['assignee_id'], ['users.id'], ),
+        sa.ForeignKeyConstraint(['created_by'], ['users.id'], ),
+        sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
+        sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_tasks_id'), 'tasks', ['id'], unique=False)
+
 
 def downgrade() -> None:
+    op.drop_index(op.f('ix_tasks_id'), table_name='tasks')
+    op.drop_table('tasks')
+    op.drop_index(op.f('ix_projects_id'), table_name='projects')
+    op.drop_table('projects')
+    op.drop_index(op.f('ix_notifications_id'), table_name='notifications')
+    op.drop_table('notifications')
     op.drop_index(op.f('ix_leave_requests_id'), table_name='leave_requests')
     op.drop_table('leave_requests')
     op.drop_index(op.f('ix_attendance_id'), table_name='attendance')

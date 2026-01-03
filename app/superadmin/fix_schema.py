@@ -73,6 +73,56 @@ def fix_tenant_schema(db_name: str, tenant_id: int) -> dict:
                 ADD COLUMN IF NOT EXISTS email_notifications BOOLEAN DEFAULT true NOT NULL;
             """))
             
+            # Create notifications table if it doesn't exist
+            connection.execute(text("""
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    type VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    message VARCHAR,
+                    data JSON,
+                    is_read BOOLEAN DEFAULT false NOT NULL,
+                    created_at TIMESTAMP DEFAULT now() NOT NULL,
+                    read_at TIMESTAMP
+                );
+            """))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_notifications_id ON notifications(id);"))
+            
+            # Create projects table if it doesn't exist
+            connection.execute(text("""
+                CREATE TABLE IF NOT EXISTS projects (
+                    id SERIAL PRIMARY KEY,
+                    title VARCHAR NOT NULL,
+                    description VARCHAR,
+                    created_by INTEGER NOT NULL REFERENCES users(id),
+                    created_at TIMESTAMP DEFAULT now() NOT NULL
+                );
+            """))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_projects_id ON projects(id);"))
+            
+            # Create tasks table if it doesn't exist
+            connection.execute(text("""
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id SERIAL PRIMARY KEY,
+                    title VARCHAR NOT NULL,
+                    description VARCHAR,
+                    status VARCHAR DEFAULT 'todo' NOT NULL,
+                    priority VARCHAR DEFAULT 'medium' NOT NULL,
+                    assignee_id INTEGER REFERENCES users(id),
+                    assignee VARCHAR,
+                    created_by INTEGER NOT NULL REFERENCES users(id),
+                    project_id INTEGER REFERENCES projects(id),
+                    position INTEGER DEFAULT 0 NOT NULL,
+                    due_date TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    is_private BOOLEAN DEFAULT false NOT NULL,
+                    created_at TIMESTAMP DEFAULT now() NOT NULL,
+                    updated_at TIMESTAMP DEFAULT now() NOT NULL
+                );
+            """))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_id ON tasks(id);"))
+            
             # Update admin users and set correct tenant_id from Super Admin
             # Set default values for nullable fields
             result = connection.execute(
