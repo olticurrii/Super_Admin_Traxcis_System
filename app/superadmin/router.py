@@ -11,9 +11,7 @@ from app.hrms_provisioning.seed_admin import seed_initial_admin
 from app.security import hash_password
 from app.utils import generate_secure_password
 from app.config import settings
-from app.superadmin.fix_schema_complete import fix_tenant_schema_complete
-from app.superadmin.fix_missing_columns import fix_missing_columns
-from app.superadmin.fix_org_settings_table import fix_organization_settings_table
+from app.superadmin.create_perfect_schema import create_perfect_tenant_schema
 import time
 import logging
 
@@ -300,22 +298,9 @@ async def fix_all_tenant_schemas(db: Session = Depends(get_super_admin_db)):
         error_count = 0
         
         for tenant in tenants:
-            logger.info(f"Fixing schema for tenant: {tenant.name} (DB: {tenant.db_name}, ID: {tenant.id})")
-            # First ensure all tables exist
-            result1 = fix_tenant_schema_complete(tenant.db_name, tenant.id)
-            # Fix organization_settings table structure
-            result2 = fix_organization_settings_table(tenant.db_name, tenant.id)
-            # Then add missing columns to other tables
-            result3 = fix_missing_columns(tenant.db_name, tenant.id)
-            
-            # Combine results
-            if result1["status"] == "success" and result2["status"] == "success" and result3["status"] == "success":
-                result = {
-                    "status": "success",
-                    "message": f"All tables and columns fixed for {tenant.db_name}"
-                }
-            else:
-                result = result1 if result1["status"] == "error" else (result2 if result2["status"] == "error" else result3)
+            logger.info(f"Creating PERFECT schema for tenant: {tenant.name} (DB: {tenant.db_name}, ID: {tenant.id})")
+            # Drop and recreate with PERFECT schema from HRMS models
+            result = create_perfect_tenant_schema(tenant.db_name, tenant.id)
             
             results.append({
                 "tenant_id": tenant.id,
