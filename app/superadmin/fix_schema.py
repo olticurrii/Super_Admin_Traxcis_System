@@ -6,12 +6,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def fix_tenant_schema(db_name: str) -> dict:
+def fix_tenant_schema(db_name: str, tenant_id: int) -> dict:
     """
-    Add missing is_admin column to an existing tenant database.
+    Add missing columns to an existing tenant database.
     
     Args:
         db_name: Name of the tenant database to fix
+        tenant_id: The Super Admin tenant ID this database belongs to
         
     Returns:
         dict with status and message
@@ -72,18 +73,21 @@ def fix_tenant_schema(db_name: str) -> dict:
                 ADD COLUMN IF NOT EXISTS email_notifications BOOLEAN DEFAULT true NOT NULL;
             """))
             
-            # Update admin users and set tenant_id to 1 (each tenant DB is isolated)
+            # Update admin users and set correct tenant_id from Super Admin
             # Set default values for nullable fields
-            result = connection.execute(text("""
-                UPDATE users 
-                SET is_admin = true,
-                    tenant_id = COALESCE(tenant_id, 1),
-                    timezone = COALESCE(timezone, 'UTC'),
-                    locale = COALESCE(locale, 'en'),
-                    theme = COALESCE(theme, 'light'),
-                    email_notifications = COALESCE(email_notifications, true)
-                WHERE role = 'admin';
-            """))
+            result = connection.execute(
+                text("""
+                    UPDATE users 
+                    SET is_admin = true,
+                        tenant_id = COALESCE(tenant_id, :tenant_id),
+                        timezone = COALESCE(timezone, 'UTC'),
+                        locale = COALESCE(locale, 'en'),
+                        theme = COALESCE(theme, 'light'),
+                        email_notifications = COALESCE(email_notifications, true)
+                    WHERE role = 'admin';
+                """),
+                {"tenant_id": tenant_id}
+            )
             updated_count = result.rowcount
             
             connection.commit()

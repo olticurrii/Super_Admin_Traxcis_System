@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def seed_initial_admin(db_url: str, admin_email: str, hashed_password: str) -> None:
+def seed_initial_admin(db_url: str, admin_email: str, hashed_password: str, tenant_id: int) -> None:
     """
     Seed an initial admin user into a tenant database using SQL.
     
@@ -20,6 +20,7 @@ def seed_initial_admin(db_url: str, admin_email: str, hashed_password: str) -> N
         db_url: Database URL for the tenant database
         admin_email: Email address for the admin user
         hashed_password: Bcrypt hashed password (already hashed)
+        tenant_id: The Super Admin tenant ID this database belongs to
         
     Raises:
         Exception: If seeding fails
@@ -79,7 +80,7 @@ def seed_initial_admin(db_url: str, admin_email: str, hashed_password: str) -> N
                     "role": "admin",
                     "is_active": True,
                     "is_admin": True,
-                    "tenant_id": 1,  # Default tenant_id for isolated tenant DB
+                    "tenant_id": tenant_id,  # Use the Super Admin tenant_id
                     "timezone": "UTC",
                     "locale": "en",
                     "theme": "light",

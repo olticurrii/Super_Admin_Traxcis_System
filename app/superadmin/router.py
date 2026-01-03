@@ -43,45 +43,7 @@ async def create_tenant(
         # Build database URL for the tenant
         db_url = f"postgresql+psycopg2://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{db_name}"
         
-        # Step 1: Create the database
-        logger.info(f"Creating database: {db_name}")
-        create_database(db_name)
-        
-        # Step 2: Run tenant migrations (uses subprocess, no HRMS imports)
-        logger.info(f"Running tenant migrations on: {db_name}")
-        try:
-            run_tenant_migrations(db_url)
-        except Exception as migration_error:
-            logger.error(f"Migration failed: {str(migration_error)}")
-            # Mark tenant as failed if we created the record
-            if tenant:
-                tenant.status = "migration_failed"
-                db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to run migrations: {str(migration_error)}"
-            )
-        
-        # Step 3: Generate secure random password for admin
-        initial_password = generate_secure_password(12)
-        hashed_password = hash_password(initial_password)
-        
-        # Step 4: Seed initial admin user
-        logger.info(f"Seeding admin user in: {db_name}")
-        try:
-            seed_initial_admin(db_url, tenant_data.admin_email, hashed_password)
-        except Exception as seed_error:
-            logger.error(f"Failed to seed admin user: {str(seed_error)}")
-            # Mark tenant as failed
-            if tenant:
-                tenant.status = "seed_failed"
-                db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to seed admin user: {str(seed_error)}"
-            )
-        
-        # Step 5: Save tenant record in super_admin_db
+        # Step 1: Create tenant record in super_admin_db FIRST to get tenant_id
         logger.info(f"Creating tenant record for: {tenant_data.name}")
         tenant = create_tenant_record(
             db=db,
@@ -89,6 +51,44 @@ async def create_tenant(
             db_name=db_name,
             admin_email=tenant_data.admin_email
         )
+        tenant_id = tenant.id
+        logger.info(f"Tenant record created with ID: {tenant_id}")
+        
+        # Step 2: Create the database
+        logger.info(f"Creating database: {db_name}")
+        create_database(db_name)
+        
+        # Step 3: Run tenant migrations (uses subprocess, no HRMS imports)
+        logger.info(f"Running tenant migrations on: {db_name}")
+        try:
+            run_tenant_migrations(db_url)
+        except Exception as migration_error:
+            logger.error(f"Migration failed: {str(migration_error)}")
+            # Mark tenant as failed
+            tenant.status = "migration_failed"
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to run migrations: {str(migration_error)}"
+            )
+        
+        # Step 4: Generate secure random password for admin
+        initial_password = generate_secure_password(12)
+        hashed_password = hash_password(initial_password)
+        
+        # Step 5: Seed initial admin user WITH the correct tenant_id
+        logger.info(f"Seeding admin user in: {db_name} with tenant_id={tenant_id}")
+        try:
+            seed_initial_admin(db_url, tenant_data.admin_email, hashed_password, tenant_id)
+        except Exception as seed_error:
+            logger.error(f"Failed to seed admin user: {str(seed_error)}")
+            # Mark tenant as failed
+            tenant.status = "seed_failed"
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to seed admin user: {str(seed_error)}"
+            )
         
         # Step 6: Return response with initial password (never stored in plaintext)
         logger.info(f"Successfully created tenant: {tenant_data.name} (ID: {tenant.id})")
@@ -298,8 +298,8 @@ async def fix_all_tenant_schemas(db: Session = Depends(get_super_admin_db)):
         error_count = 0
         
         for tenant in tenants:
-            logger.info(f"Fixing schema for tenant: {tenant.name} (DB: {tenant.db_name})")
-            result = fix_tenant_schema(tenant.db_name)
+            logger.info(f"Fixing schema for tenant: {tenant.name} (DB: {tenant.db_name}, ID: {tenant.id})")
+            result = fix_tenant_schema(tenant.db_name, tenant.id)
             
             results.append({
                 "tenant_id": tenant.id,
