@@ -11,7 +11,7 @@ from app.hrms_provisioning.seed_admin import seed_initial_admin
 from app.security import hash_password
 from app.utils import generate_secure_password
 from app.config import settings
-from app.superadmin.fix_schema import fix_tenant_schema
+from app.superadmin.fix_schema_complete import fix_tenant_schema_complete
 import time
 import logging
 
@@ -299,7 +299,7 @@ async def fix_all_tenant_schemas(db: Session = Depends(get_super_admin_db)):
         
         for tenant in tenants:
             logger.info(f"Fixing schema for tenant: {tenant.name} (DB: {tenant.db_name}, ID: {tenant.id})")
-            result = fix_tenant_schema(tenant.db_name, tenant.id)
+            result = fix_tenant_schema_complete(tenant.db_name, tenant.id)
             
             results.append({
                 "tenant_id": tenant.id,
