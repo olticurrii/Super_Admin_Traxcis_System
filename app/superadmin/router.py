@@ -11,6 +11,7 @@ from app.hrms_provisioning.seed_admin import seed_initial_admin
 from app.security import hash_password
 from app.utils import generate_secure_password
 from app.config import settings
+from app.superadmin.fix_schema import fix_tenant_schema
 import time
 import logging
 
@@ -274,5 +275,57 @@ async def update_tenant_status_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update tenant status: {str(e)}"
+        )
+
+
+@router.post("/fix-all-tenant-schemas", status_code=status.HTTP_200_OK)
+async def fix_all_tenant_schemas(db: Session = Depends(get_super_admin_db)):
+    """
+    Fix schema for all existing tenant databases by adding missing is_admin column.
+    
+    This endpoint iterates through all active tenants and adds the is_admin column
+    if it's missing from the users table.
+    
+    Returns:
+        Summary of the fix operation for each tenant
+    """
+    try:
+        # Get all active tenants
+        tenants = list_tenants(db, skip=0, limit=1000)
+        
+        results = []
+        fixed_count = 0
+        error_count = 0
+        
+        for tenant in tenants:
+            logger.info(f"Fixing schema for tenant: {tenant.name} (DB: {tenant.db_name})")
+            result = fix_tenant_schema(tenant.db_name)
+            
+            results.append({
+                "tenant_id": tenant.id,
+                "tenant_name": tenant.name,
+                "db_name": tenant.db_name,
+                "result": result
+            })
+            
+            if result["status"] == "success":
+                fixed_count += 1
+            else:
+                error_count += 1
+        
+        logger.info(f"Schema fix complete. Fixed: {fixed_count}, Errors: {error_count}")
+        
+        return {
+            "message": f"Schema fix complete. Fixed: {fixed_count}, Errors: {error_count}",
+            "fixed_count": fixed_count,
+            "error_count": error_count,
+            "results": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to fix tenant schemas: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fix tenant schemas: {str(e)}"
         )
 
