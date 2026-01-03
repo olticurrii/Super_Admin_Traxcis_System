@@ -63,15 +63,16 @@ def seed_initial_admin(db_url: str, admin_email: str, hashed_password: str) -> N
             # Insert admin user
             connection.execute(
                 text("""
-                    INSERT INTO users (email, full_name, hashed_password, role, is_active)
-                    VALUES (:email, :full_name, :hashed_password, :role, :is_active)
+                    INSERT INTO users (email, full_name, hashed_password, role, is_active, is_admin)
+                    VALUES (:email, :full_name, :hashed_password, :role, :is_active, :is_admin)
                 """),
                 {
                     "email": admin_email,
                     "full_name": full_name,
                     "hashed_password": hashed_password,
                     "role": "admin",
-                    "is_active": True
+                    "is_active": True,
+                    "is_admin": True
                 }
             )
             connection.commit()

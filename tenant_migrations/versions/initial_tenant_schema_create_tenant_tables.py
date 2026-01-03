@@ -25,6 +25,7 @@ def upgrade() -> None:
         sa.Column('hashed_password', sa.String(), nullable=False),
         sa.Column('role', sa.String(), nullable=False),
         sa.Column('is_active', sa.Boolean(), server_default='true', nullable=False),
+        sa.Column('is_admin', sa.Boolean(), server_default='false', nullable=False),
         sa.Column('tenant_id', sa.Integer(), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
