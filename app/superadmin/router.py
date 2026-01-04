@@ -12,6 +12,7 @@ from app.security import hash_password
 from app.utils import generate_secure_password
 from app.config import settings
 from app.superadmin.create_perfect_schema import create_perfect_tenant_schema
+from app.superadmin.reseed_all_admins import reseed_tenant_admin
 import time
 import logging
 
@@ -329,5 +330,64 @@ async def fix_all_tenant_schemas(db: Session = Depends(get_super_admin_db)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fix tenant schemas: {str(e)}"
+        )
+
+
+@router.post("/reseed-all-admins", status_code=status.HTTP_200_OK)
+async def reseed_all_admin_users(db: Session = Depends(get_super_admin_db)):
+    """
+    Re-seed admin users for ALL tenants.
+    
+    This is a CRITICAL RECOVERY endpoint to use after schema recreation
+    has deleted all users.
+    
+    Returns:
+        List of tenants with their new admin passwords
+    """
+    try:
+        # Get all tenants
+        tenants = list_tenants(db, skip=0, limit=1000)
+        
+        results = []
+        success_count = 0
+        error_count = 0
+        
+        for tenant in tenants:
+            logger.info(f"Re-seeding admin for tenant: {tenant.name} (DB: {tenant.db_name}, ID: {tenant.id})")
+            result = reseed_tenant_admin(tenant.db_name, tenant.admin_email, tenant.id)
+            
+            results.append({
+                "tenant_id": tenant.id,
+                "tenant_name": tenant.name,
+                "db_name": tenant.db_name,
+                "admin_email": tenant.admin_email,
+                "status": result["status"],
+                "message": result["message"],
+                "new_password": result.get("password")
+            })
+            
+            if result["status"] == "success":
+                success_count += 1
+                # Update tenant status to active
+                tenant.status = "active"
+            else:
+                error_count += 1
+        
+        db.commit()
+        
+        logger.info(f"Admin re-seed complete. Success: {success_count}, Errors: {error_count}")
+        
+        return {
+            "message": f"Admin re-seed complete. Success: {success_count}, Errors: {error_count}",
+            "success_count": success_count,
+            "error_count": error_count,
+            "tenants": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to reseed admin users: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reseed admin users: {str(e)}"
         )
 
