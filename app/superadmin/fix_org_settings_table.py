@@ -81,3 +81,4 @@ def fix_organization_settings_table(db_name: str, tenant_id: int) -> dict:
             "message": f"Failed to fix organization_settings: {str(e)}"
         }
 
+

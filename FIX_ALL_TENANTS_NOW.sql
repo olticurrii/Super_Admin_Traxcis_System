@@ -29,3 +29,4 @@ SELECT id, email, role, is_admin FROM users;
 -- UPDATE users SET is_admin = true WHERE role = 'admin';
 -- SELECT id, email, role, is_admin FROM users;
 
+

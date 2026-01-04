@@ -31,3 +31,4 @@ SELECT id, email, role, is_admin FROM users;
 
 -- Step 8: Try logging in again - should work now!
 
+

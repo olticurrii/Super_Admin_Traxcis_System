@@ -696,3 +696,4 @@ def create_perfect_tenant_schema(db_name: str, tenant_id: int) -> dict:
             "message": f"Failed to create perfect schema: {str(e)}"
         }
 
+

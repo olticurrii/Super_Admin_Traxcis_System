@@ -58,25 +58,26 @@ async def create_tenant(
         logger.info(f"Creating database: {db_name}")
         create_database(db_name)
         
-        # Step 3: Run tenant migrations (uses subprocess, no HRMS imports)
-        logger.info(f"Running tenant migrations on: {db_name}")
+        # Step 3: Create PERFECT schema (directly from HRMS models, no migrations needed)
+        logger.info(f"Creating PERFECT schema in: {db_name}")
         try:
-            run_tenant_migrations(db_url)
-        except Exception as migration_error:
-            logger.error(f"Migration failed: {str(migration_error)}")
+            schema_result = create_perfect_tenant_schema(db_name, tenant_id)
+            if schema_result["status"] == "error":
+                raise Exception(schema_result["message"])
+        except Exception as schema_error:
+            logger.error(f"Schema creation failed: {str(schema_error)}")
             # Mark tenant as failed
-            tenant.status = "migration_failed"
+            tenant.status = "schema_failed"
             db.commit()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to run migrations: {str(migration_error)}"
+                detail=f"Failed to create schema: {str(schema_error)}"
             )
         
-        # Step 4: Generate secure random password for admin
+        # Step 4: Generate secure random password for admin and seed user
         initial_password = generate_secure_password(12)
         hashed_password = hash_password(initial_password)
         
-        # Step 5: Seed initial admin user WITH the correct tenant_id
         logger.info(f"Seeding admin user in: {db_name} with tenant_id={tenant_id}")
         try:
             seed_initial_admin(db_url, tenant_data.admin_email, hashed_password, tenant_id)
