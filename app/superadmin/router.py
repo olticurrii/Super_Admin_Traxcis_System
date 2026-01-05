@@ -146,6 +146,59 @@ async def get_tenants(
         )
 
 
+@router.get("/tenant-by-email/{email}")
+async def get_tenant_by_email(
+    email: str,
+    db: Session = Depends(get_super_admin_db)
+):
+    """
+    Get tenant database information by admin email.
+    
+    This endpoint is used by the HRMS backend to determine which tenant
+    database to connect to during login.
+    
+    Args:
+        email: The admin email address
+        
+    Returns:
+        Tenant database connection information
+    """
+    try:
+        from app.superadmin.models import Tenant
+        
+        tenant = db.query(Tenant).filter(
+            Tenant.admin_email == email,
+            Tenant.status == "active"
+        ).first()
+        
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No active tenant found for email: {email}"
+            )
+        
+        # Return tenant database info for HRMS backend
+        return {
+            "tenant_id": tenant.id,
+            "tenant_name": tenant.name,
+            "db_name": tenant.db_name,
+            "db_host": tenant.db_host,
+            "db_port": tenant.db_port,
+            "db_user": tenant.db_user,
+            "db_password": tenant.db_password,
+            "admin_email": tenant.admin_email
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get tenant by email {email}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get tenant information: {str(e)}"
+        )
+
+
 @router.delete("/tenants/{tenant_id}", status_code=status.HTTP_200_OK)
 async def delete_tenant(
     tenant_id: int,
