@@ -146,8 +146,8 @@ async def get_tenants(
         )
 
 
-@router.get("/tenant-by-email/{email}")
-async def get_tenant_by_email(
+@router.get("/tenants/find-by-email/{email}")
+async def find_tenant_by_email(
     email: str,
     db: Session = Depends(get_super_admin_db)
 ):
