@@ -7,6 +7,7 @@ from typing import Optional
 class TenantCreate(BaseModel):
     """Schema for creating a new tenant."""
     name: str
+    company_name: str  # NEW: Company name for easy login
     admin_email: EmailStr
 
 
@@ -25,6 +26,7 @@ class TenantInfo(BaseModel):
     """Schema for tenant information (without sensitive data)."""
     id: int
     name: str
+    company_name: str
     db_name: str
     db_host: str
     db_port: str

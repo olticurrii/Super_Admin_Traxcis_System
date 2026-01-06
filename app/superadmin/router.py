@@ -45,10 +45,11 @@ async def create_tenant(
         db_url = f"postgresql+psycopg2://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{db_name}"
         
         # Step 1: Create tenant record in super_admin_db FIRST to get tenant_id
-        logger.info(f"Creating tenant record for: {tenant_data.name}")
+        logger.info(f"Creating tenant record for: {tenant_data.name} (Company: {tenant_data.company_name})")
         tenant = create_tenant_record(
             db=db,
             name=tenant_data.name,
+            company_name=tenant_data.company_name,
             db_name=db_name,
             admin_email=tenant_data.admin_email
         )
@@ -146,6 +147,62 @@ async def get_tenants(
         )
 
 
+@router.get("/tenants/find-by-company/{company_name}")
+async def find_tenant_by_company(
+    company_name: str,
+    db: Session = Depends(get_super_admin_db)
+):
+    """
+    Get tenant database information by company name.
+    
+    This is the PRIMARY login endpoint. Users provide their company name
+    during login, and this returns the tenant database info.
+    
+    This allows ANY user in the company to login without pre-registration!
+    
+    Args:
+        company_name: The company name (e.g., "Traxcis", "Acme Corp")
+        
+    Returns:
+        Tenant database connection information
+    """
+    try:
+        from app.superadmin.models import Tenant
+        
+        # Find tenant by company name
+        tenant = db.query(Tenant).filter(
+            Tenant.company_name == company_name,
+            Tenant.status == "active"
+        ).first()
+        
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No active tenant found for company: {company_name}"
+            )
+        
+        # Return tenant database info for HRMS backend
+        return {
+            "tenant_id": tenant.id,
+            "tenant_name": tenant.name,
+            "company_name": tenant.company_name,
+            "db_name": tenant.db_name,
+            "db_host": tenant.db_host,
+            "db_port": tenant.db_port,
+            "db_user": tenant.db_user,
+            "db_password": tenant.db_password
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get tenant by company {company_name}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get tenant information: {str(e)}"
+        )
+
+
 @router.get("/tenants/find-by-email/{email}")
 async def find_tenant_by_email(
     email: str,
@@ -154,10 +211,8 @@ async def find_tenant_by_email(
     """
     Get tenant database information by user email.
     
-    This endpoint is used by the HRMS backend to determine which tenant
-    database to connect to during login.
-    
-    Works for BOTH admin users and regular employees.
+    DEPRECATED: Use /tenants/find-by-company/{company_name} instead.
+    This endpoint is kept for backwards compatibility.
     
     Args:
         email: The user's email address
@@ -197,6 +252,7 @@ async def find_tenant_by_email(
         return {
             "tenant_id": tenant.id,
             "tenant_name": tenant.name,
+            "company_name": tenant.company_name,
             "db_name": tenant.db_name,
             "db_host": tenant.db_host,
             "db_port": tenant.db_port,

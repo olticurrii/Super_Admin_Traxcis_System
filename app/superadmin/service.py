@@ -8,6 +8,7 @@ import time
 def create_tenant_record(
     db: Session,
     name: str,
+    company_name: str,
     db_name: str,
     admin_email: str,
     db_host: str = None,
@@ -21,6 +22,7 @@ def create_tenant_record(
     Args:
         db: Database session
         name: Tenant name
+        company_name: Company name (used for login)
         db_name: Database name for the tenant
         admin_email: Admin email for the tenant
         db_host: Database host (defaults to config)
@@ -33,6 +35,7 @@ def create_tenant_record(
     """
     tenant = Tenant(
         name=name,
+        company_name=company_name,
         db_name=db_name,
         db_host=db_host or settings.DB_HOST,
         db_port=db_port or settings.DB_PORT,

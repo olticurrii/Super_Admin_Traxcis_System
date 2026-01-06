@@ -12,6 +12,7 @@ interface TenantFormProps {
 export default function TenantForm({ onSuccess }: TenantFormProps) {
   const [formData, setFormData] = useState({
     name: '',
+    company_name: '',
     admin_email: '',
   });
   const [loading, setLoading] = useState(false);
@@ -28,7 +29,7 @@ export default function TenantForm({ onSuccess }: TenantFormProps) {
       const tenant = await createTenant(formData);
       setSuccess(true);
       onSuccess(tenant);
-      setFormData({ name: '', admin_email: '' });
+      setFormData({ name: '', company_name: '', admin_email: '' });
       
       // Reset success message after 3 seconds
       setTimeout(() => setSuccess(false), 3000);
@@ -62,6 +63,22 @@ export default function TenantForm({ onSuccess }: TenantFormProps) {
             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all shadow-sm hover:border-gray-300"
             placeholder="e.g., Acme Corporation"
           />
+        </div>
+
+        <div>
+          <label htmlFor="company_name" className="block text-sm font-semibold text-gray-700 mb-2.5">
+            Company Name <span className="text-primary-600">(for login)</span>
+          </label>
+          <input
+            type="text"
+            id="company_name"
+            required
+            value={formData.company_name}
+            onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all shadow-sm hover:border-gray-300"
+            placeholder="e.g., Traxcis"
+          />
+          <p className="mt-1.5 text-xs text-gray-500">Users will enter this name when logging in to the HRMS</p>
         </div>
 
         <div>

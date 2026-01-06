@@ -13,6 +13,7 @@ class Tenant(SuperAdminBase):
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False, index=True)
+    company_name = Column(String, nullable=False, unique=True, index=True)  # NEW: For easy tenant lookup during login
     db_name = Column(String, nullable=False, unique=True, index=True)
     db_host = Column(String, nullable=False, default="localhost")
     db_port = Column(String, nullable=False, default="5432")

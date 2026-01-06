@@ -1,5 +1,6 @@
 export interface TenantCreate {
   name: string;
+  company_name: string;
   admin_email: string;
 }
 
@@ -13,6 +14,7 @@ export interface TenantResponse {
 export interface TenantInfo {
   id: number;
   name: string;
+  company_name: string;
   db_name: string;
   db_host: string;
   db_port: string;
