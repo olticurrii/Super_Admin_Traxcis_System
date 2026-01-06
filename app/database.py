@@ -30,7 +30,32 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=super_admin_
 
 def init_db():
     """Initialize the super_admin_db by creating all tables."""
+    from sqlalchemy import text, inspect
+    
+    # Create all tables
     SuperAdminBase.metadata.create_all(bind=super_admin_engine)
+    
+    # Add company_name column if it doesn't exist (migration)
+    try:
+        inspector = inspect(super_admin_engine)
+        columns = [col['name'] for col in inspector.get_columns('tenants')]
+        
+        if 'company_name' not in columns:
+            with super_admin_engine.connect() as connection:
+                # Add column (nullable first)
+                connection.execute(text("ALTER TABLE tenants ADD COLUMN company_name VARCHAR"))
+                # Set default value for existing rows
+                connection.execute(text("UPDATE tenants SET company_name = name WHERE company_name IS NULL"))
+                # Make it NOT NULL
+                connection.execute(text("ALTER TABLE tenants ALTER COLUMN company_name SET NOT NULL"))
+                # Add unique constraint
+                connection.execute(text("ALTER TABLE tenants ADD CONSTRAINT uq_tenant_company_name UNIQUE (company_name)"))
+                # Add index
+                connection.execute(text("CREATE INDEX ix_tenants_company_name ON tenants (company_name)"))
+                connection.commit()
+                print("✅ Added company_name column to tenants table")
+    except Exception as e:
+        print(f"Note: company_name column migration: {str(e)}")
 
 
 def get_super_admin_db() -> Session:
