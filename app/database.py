@@ -3,6 +3,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from app.config import settings
 from app.superadmin.models import SuperAdminBase
+# Import all models so they're registered with SuperAdminBase.metadata
+from app.superadmin.models import Tenant  # noqa: F401
+from app.superadmin.tenant_users_model import TenantUser  # noqa: F401
 
 
 # Engine for super_admin_db (for tenant metadata storage)

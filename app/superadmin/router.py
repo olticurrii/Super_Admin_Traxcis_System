@@ -152,24 +152,40 @@ async def find_tenant_by_email(
     db: Session = Depends(get_super_admin_db)
 ):
     """
-    Get tenant database information by admin email.
+    Get tenant database information by user email.
     
     This endpoint is used by the HRMS backend to determine which tenant
     database to connect to during login.
     
+    Works for BOTH admin users and regular employees.
+    
     Args:
-        email: The admin email address
+        email: The user's email address
         
     Returns:
         Tenant database connection information
     """
     try:
         from app.superadmin.models import Tenant
+        from app.superadmin.tenant_users_model import TenantUser
         
+        # First check if it's an admin email
         tenant = db.query(Tenant).filter(
             Tenant.admin_email == email,
             Tenant.status == "active"
         ).first()
+        
+        # If not an admin, check tenant_users table
+        if not tenant:
+            tenant_user = db.query(TenantUser).filter(
+                TenantUser.email == email
+            ).first()
+            
+            if tenant_user:
+                tenant = db.query(Tenant).filter(
+                    Tenant.id == tenant_user.tenant_id,
+                    Tenant.status == "active"
+                ).first()
         
         if not tenant:
             raise HTTPException(
@@ -196,6 +212,98 @@ async def find_tenant_by_email(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get tenant information: {str(e)}"
+        )
+
+
+@router.post("/tenants/{tenant_id}/users", status_code=status.HTTP_201_CREATED)
+async def register_tenant_user(
+    tenant_id: int,
+    user_data: dict,
+    db: Session = Depends(get_super_admin_db)
+):
+    """
+    Register a user's email with a tenant for login lookup.
+    
+    This endpoint is called by the HRMS backend when creating new users.
+    It creates a mapping: user_email -> tenant_id so the user can login.
+    
+    Args:
+        tenant_id: The tenant ID this user belongs to
+        user_data: {"email": "user@example.com"}
+        
+    Returns:
+        Success confirmation with user mapping info
+    """
+    try:
+        from app.superadmin.models import Tenant
+        from app.superadmin.tenant_users_model import TenantUser
+        
+        email = user_data.get("email")
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email is required"
+            )
+        
+        # Verify tenant exists and is active
+        tenant = db.query(Tenant).filter(
+            Tenant.id == tenant_id,
+            Tenant.status == "active"
+        ).first()
+        
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Active tenant with ID {tenant_id} not found"
+            )
+        
+        # Check if user email already registered
+        existing_user = db.query(TenantUser).filter(
+            TenantUser.email == email
+        ).first()
+        
+        if existing_user:
+            # Update tenant_id if different
+            if existing_user.tenant_id != tenant_id:
+                logger.warning(f"User {email} moving from tenant {existing_user.tenant_id} to {tenant_id}")
+                existing_user.tenant_id = tenant_id
+                db.commit()
+                db.refresh(existing_user)
+                
+            return {
+                "status": "updated",
+                "email": email,
+                "tenant_id": tenant_id,
+                "tenant_name": tenant.name
+            }
+        
+        # Create new user mapping
+        tenant_user = TenantUser(
+            email=email,
+            tenant_id=tenant_id
+        )
+        
+        db.add(tenant_user)
+        db.commit()
+        db.refresh(tenant_user)
+        
+        logger.info(f"Registered user {email} for tenant {tenant_id} ({tenant.name})")
+        
+        return {
+            "status": "created",
+            "email": email,
+            "tenant_id": tenant_id,
+            "tenant_name": tenant.name
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to register user: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to register user: {str(e)}"
         )
 
 
