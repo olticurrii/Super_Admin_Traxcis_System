@@ -55,6 +55,22 @@ def init_db():
                 connection.execute(text("UPDATE tenants SET company_name = name WHERE company_name IS NULL"))
                 logger.info("✓ Default values set")
                 
+                # Fix duplicates before adding unique constraint
+                result = connection.execute(text("""
+                    WITH duplicates AS (
+                        SELECT id, company_name,
+                               ROW_NUMBER() OVER (PARTITION BY company_name ORDER BY id) as rn
+                        FROM tenants
+                        WHERE company_name IS NOT NULL
+                    )
+                    UPDATE tenants
+                    SET company_name = tenants.company_name || '_' || tenants.id
+                    FROM duplicates
+                    WHERE tenants.id = duplicates.id AND duplicates.rn > 1
+                """))
+                if result.rowcount > 0:
+                    logger.info(f"✓ Fixed {result.rowcount} duplicate company names")
+                
                 # Make it NOT NULL
                 connection.execute(text("ALTER TABLE tenants ALTER COLUMN company_name SET NOT NULL"))
                 logger.info("✓ NOT NULL constraint added")
@@ -69,7 +85,55 @@ def init_db():
                 
             logger.info("✅ company_name column successfully added to tenants table")
         else:
-            logger.info("company_name column already exists")
+            # Column exists, but check if constraints are missing (from previous failed migration)
+            logger.info("company_name column already exists, checking constraints...")
+            
+            with super_admin_engine.begin() as connection:
+                # Check if unique constraint exists
+                constraint_check = connection.execute(text("""
+                    SELECT constraint_name 
+                    FROM information_schema.table_constraints 
+                    WHERE table_name = 'tenants' 
+                    AND constraint_name = 'uq_tenant_company_name'
+                """))
+                
+                if not constraint_check.fetchone():
+                    logger.info("Unique constraint missing, adding it now...")
+                    
+                    # Fix duplicates first
+                    result = connection.execute(text("""
+                        WITH duplicates AS (
+                            SELECT id, company_name,
+                                   ROW_NUMBER() OVER (PARTITION BY company_name ORDER BY id) as rn
+                            FROM tenants
+                            WHERE company_name IS NOT NULL
+                        )
+                        UPDATE tenants
+                        SET company_name = tenants.company_name || '_' || tenants.id
+                        FROM duplicates
+                        WHERE tenants.id = duplicates.id AND duplicates.rn > 1
+                    """))
+                    if result.rowcount > 0:
+                        logger.info(f"✓ Fixed {result.rowcount} duplicate company names")
+                    
+                    # Add unique constraint
+                    connection.execute(text("ALTER TABLE tenants ADD CONSTRAINT uq_tenant_company_name UNIQUE (company_name)"))
+                    logger.info("✓ Unique constraint added")
+                    
+                # Check if index exists
+                index_check = connection.execute(text("""
+                    SELECT indexname 
+                    FROM pg_indexes 
+                    WHERE tablename = 'tenants' 
+                    AND indexname = 'ix_tenants_company_name'
+                """))
+                
+                if not index_check.fetchone():
+                    logger.info("Index missing, creating it now...")
+                    connection.execute(text("CREATE INDEX ix_tenants_company_name ON tenants (company_name)"))
+                    logger.info("✓ Index created")
+            
+            logger.info("✅ company_name column and constraints verified")
             
     except Exception as e:
         logger.error(f"❌ Failed to add company_name column: {str(e)}")
