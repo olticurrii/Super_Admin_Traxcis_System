@@ -31,6 +31,9 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=super_admin_
 def init_db():
     """Initialize the super_admin_db by creating all tables."""
     from sqlalchemy import text, inspect
+    import logging
+    
+    logger = logging.getLogger(__name__)
     
     # Create all tables
     SuperAdminBase.metadata.create_all(bind=super_admin_engine)
@@ -41,21 +44,36 @@ def init_db():
         columns = [col['name'] for col in inspector.get_columns('tenants')]
         
         if 'company_name' not in columns:
-            with super_admin_engine.connect() as connection:
+            logger.info("Adding company_name column to tenants table...")
+            
+            with super_admin_engine.begin() as connection:
                 # Add column (nullable first)
                 connection.execute(text("ALTER TABLE tenants ADD COLUMN company_name VARCHAR"))
+                logger.info("✓ Column added")
+                
                 # Set default value for existing rows
                 connection.execute(text("UPDATE tenants SET company_name = name WHERE company_name IS NULL"))
+                logger.info("✓ Default values set")
+                
                 # Make it NOT NULL
                 connection.execute(text("ALTER TABLE tenants ALTER COLUMN company_name SET NOT NULL"))
+                logger.info("✓ NOT NULL constraint added")
+                
                 # Add unique constraint
                 connection.execute(text("ALTER TABLE tenants ADD CONSTRAINT uq_tenant_company_name UNIQUE (company_name)"))
+                logger.info("✓ Unique constraint added")
+                
                 # Add index
                 connection.execute(text("CREATE INDEX ix_tenants_company_name ON tenants (company_name)"))
-                connection.commit()
-                print("✅ Added company_name column to tenants table")
+                logger.info("✓ Index created")
+                
+            logger.info("✅ company_name column successfully added to tenants table")
+        else:
+            logger.info("company_name column already exists")
+            
     except Exception as e:
-        print(f"Note: company_name column migration: {str(e)}")
+        logger.error(f"❌ Failed to add company_name column: {str(e)}")
+        raise  # Re-raise to prevent service from starting with broken schema
 
 
 def get_super_admin_db() -> Session:
