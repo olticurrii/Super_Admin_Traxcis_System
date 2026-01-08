@@ -130,3 +130,4 @@ Instead of manually fixing each database, this:
 **Run the curl command in 2-3 minutes and ALL your tenants will be fixed!** 🚀
 
 
+

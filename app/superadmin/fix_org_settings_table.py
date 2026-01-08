@@ -82,3 +82,4 @@ def fix_organization_settings_table(db_name: str, tenant_id: int) -> dict:
         }
 
 
+

@@ -15,6 +15,55 @@ router = APIRouter(
 )
 
 
+@router.get("/find-by-company/{company_name}", response_model=TenantByEmailResponse)
+def find_tenant_by_company(
+    company_name: str,
+    db: Session = Depends(get_super_admin_db)
+):
+    """
+    Find tenant by company name (case-insensitive search).
+    
+    This is the PRIMARY endpoint for HRMS login. Users provide their company name
+    during login, and this returns the tenant database connection info.
+    
+    This allows ANY user in the company to login without pre-registration!
+    
+    Args:
+        company_name: Company name to search for (case-insensitive)
+        db: Database session
+        
+    Returns:
+        dict with tenant_id, db_url, and company_name
+        
+    Raises:
+        HTTPException: 404 if tenant not found or inactive
+    """
+    # Case-insensitive search using LOWER() function
+    tenant = db.query(Tenant).filter(
+        func.lower(Tenant.company_name) == func.lower(company_name),
+        Tenant.status == "active"
+    ).first()
+    
+    if not tenant:
+        logger.warning(f"Tenant not found for company: {company_name}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No active tenant found for company: {company_name}"
+        )
+    
+    # Construct db_url from tenant's database connection fields
+    # Format: postgresql+psycopg2://user:password@host:port/db_name
+    db_url = f"postgresql+psycopg2://{tenant.db_user}:{tenant.db_password}@{tenant.db_host}:{tenant.db_port}/{tenant.db_name}"
+    
+    logger.info(f"Found tenant {tenant.id} ({tenant.name}) for company: {company_name}")
+    
+    return TenantByEmailResponse(
+        tenant_id=tenant.id,
+        db_url=db_url,
+        company_name=tenant.company_name
+    )
+
+
 @router.get("/find-by-email/{email}", response_model=TenantByEmailResponse)
 def find_tenant_by_email(
     email: str,
@@ -23,8 +72,8 @@ def find_tenant_by_email(
     """
     Find tenant by admin_email (case-insensitive search).
     
-    This endpoint is used by the HRMS login system to discover which tenant
-    a user belongs to based on their email address.
+    DEPRECATED: Use /find-by-company/{company_name} instead for better UX.
+    This endpoint is kept for backwards compatibility.
     
     Args:
         email: Email address to search for (case-insensitive)
@@ -38,7 +87,8 @@ def find_tenant_by_email(
     """
     # Case-insensitive search using LOWER() function
     tenant = db.query(Tenant).filter(
-        func.lower(Tenant.admin_email) == func.lower(email)
+        func.lower(Tenant.admin_email) == func.lower(email),
+        Tenant.status == "active"
     ).first()
     
     if not tenant:
@@ -57,7 +107,7 @@ def find_tenant_by_email(
     return TenantByEmailResponse(
         tenant_id=tenant.id,
         db_url=db_url,
-        company_name=tenant.name
+        company_name=tenant.company_name if hasattr(tenant, 'company_name') else tenant.name
     )
 
 

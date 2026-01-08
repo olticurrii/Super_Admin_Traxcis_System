@@ -44,3 +44,4 @@ def downgrade() -> None:
     op.drop_constraint('uq_tenant_company_name', 'tenants', type_='unique')
     op.drop_column('tenants', 'company_name')
 
+

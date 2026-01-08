@@ -51,9 +51,11 @@ def create_perfect_tenant_schema(db_name: str, tenant_id: int) -> dict:
                     name VARCHAR NOT NULL UNIQUE,
                     description TEXT,
                     manager_id INTEGER,
+                    parent_department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
                 );
+                CREATE INDEX idx_departments_parent_id ON departments(parent_department_id);
                 
                 CREATE TABLE users (
                     id SERIAL PRIMARY KEY,
@@ -695,5 +697,6 @@ def create_perfect_tenant_schema(db_name: str, tenant_id: int) -> dict:
             "status": "error",
             "message": f"Failed to create perfect schema: {str(e)}"
         }
+
 
 

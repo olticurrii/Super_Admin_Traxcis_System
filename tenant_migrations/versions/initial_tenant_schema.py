@@ -28,13 +28,15 @@ def upgrade() -> None:
         sa.Column('name', sa.String(), nullable=False),
         sa.Column('description', sa.String(), nullable=True),
         sa.Column('manager_id', sa.Integer(), nullable=True),
-        sa.Column('parent_id', sa.Integer(), nullable=True),
+        sa.Column('parent_department_id', sa.Integer(), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+        sa.ForeignKeyConstraint(['parent_department_id'], ['departments.id'], ondelete='SET NULL'),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_departments_id'), 'departments', ['id'], unique=False)
     op.create_index(op.f('ix_departments_name'), 'departments', ['name'], unique=True)
+    op.create_index('idx_departments_parent_id', 'departments', ['parent_department_id'], unique=False)
     
     # Users table
     op.create_table('users',

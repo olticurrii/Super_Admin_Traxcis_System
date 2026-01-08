@@ -112,3 +112,4 @@ def fix_missing_columns(db_name: str, tenant_id: int) -> dict:
         }
 
 
+

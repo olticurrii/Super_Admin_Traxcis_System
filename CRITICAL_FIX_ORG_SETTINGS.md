@@ -94,3 +94,4 @@ This fix **drops and recreates** the `organization_settings` table, so any custo
 **WAIT → RUN FIX → SUCCESS!** 🚀
 
 
+
