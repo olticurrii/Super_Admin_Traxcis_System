@@ -181,14 +181,18 @@ async def find_tenant_by_company(
                 detail=f"No active tenant found for company: {company_name}"
             )
         
+        # Override host/port for local development if LOCAL_DB_HOST is set
+        db_host = settings.LOCAL_DB_HOST if settings.LOCAL_DB_HOST else tenant.db_host
+        db_port = settings.LOCAL_DB_PORT if settings.LOCAL_DB_PORT else tenant.db_port
+        
         # Return tenant database info for HRMS backend
         return {
             "tenant_id": tenant.id,
             "tenant_name": tenant.name,
             "company_name": tenant.company_name,
             "db_name": tenant.db_name,
-            "db_host": tenant.db_host,
-            "db_port": tenant.db_port,
+            "db_host": db_host,
+            "db_port": db_port,
             "db_user": tenant.db_user,
             "db_password": tenant.db_password
         }
@@ -248,14 +252,18 @@ async def find_tenant_by_email(
                 detail=f"No active tenant found for email: {email}"
             )
         
+        # Override host/port for local development if LOCAL_DB_HOST is set
+        db_host = settings.LOCAL_DB_HOST if settings.LOCAL_DB_HOST else tenant.db_host
+        db_port = settings.LOCAL_DB_PORT if settings.LOCAL_DB_PORT else tenant.db_port
+        
         # Return tenant database info for HRMS backend
         return {
             "tenant_id": tenant.id,
             "tenant_name": tenant.name,
             "company_name": tenant.company_name,
             "db_name": tenant.db_name,
-            "db_host": tenant.db_host,
-            "db_port": tenant.db_port,
+            "db_host": db_host,
+            "db_port": db_port,
             "db_user": tenant.db_user,
             "db_password": tenant.db_password,
             "admin_email": tenant.admin_email

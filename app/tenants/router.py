@@ -5,6 +5,7 @@ from sqlalchemy import func
 from app.database import get_super_admin_db
 from app.superadmin.models import Tenant
 from app.superadmin.schemas import TenantByEmailResponse, TenantByIdResponse
+from app.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -51,9 +52,13 @@ def find_tenant_by_company(
             detail=f"No active tenant found for company: {company_name}"
         )
     
+    # Override host/port for local development if LOCAL_DB_HOST is set
+    db_host = settings.LOCAL_DB_HOST if settings.LOCAL_DB_HOST else tenant.db_host
+    db_port = settings.LOCAL_DB_PORT if settings.LOCAL_DB_PORT else tenant.db_port
+    
     # Construct db_url from tenant's database connection fields
     # Format: postgresql+psycopg2://user:password@host:port/db_name
-    db_url = f"postgresql+psycopg2://{tenant.db_user}:{tenant.db_password}@{tenant.db_host}:{tenant.db_port}/{tenant.db_name}"
+    db_url = f"postgresql+psycopg2://{tenant.db_user}:{tenant.db_password}@{db_host}:{db_port}/{tenant.db_name}"
     
     logger.info(f"Found tenant {tenant.id} ({tenant.name}) for company: {company_name}")
     
@@ -98,9 +103,13 @@ def find_tenant_by_email(
             detail="Tenant not found for email"
         )
     
+    # Override host/port for local development if LOCAL_DB_HOST is set
+    db_host = settings.LOCAL_DB_HOST if settings.LOCAL_DB_HOST else tenant.db_host
+    db_port = settings.LOCAL_DB_PORT if settings.LOCAL_DB_PORT else tenant.db_port
+    
     # Construct db_url from tenant's database connection fields
     # Format: postgresql+psycopg2://user:password@host:port/db_name
-    db_url = f"postgresql+psycopg2://{tenant.db_user}:{tenant.db_password}@{tenant.db_host}:{tenant.db_port}/{tenant.db_name}"
+    db_url = f"postgresql+psycopg2://{tenant.db_user}:{tenant.db_password}@{db_host}:{db_port}/{tenant.db_name}"
     
     logger.info(f"Found tenant {tenant.id} ({tenant.name}) for email: {email}")
     
@@ -141,9 +150,13 @@ def get_tenant(
             detail=f"Tenant {tenant_id} not found"
         )
     
+    # Override host/port for local development if LOCAL_DB_HOST is set
+    db_host = settings.LOCAL_DB_HOST if settings.LOCAL_DB_HOST else tenant.db_host
+    db_port = settings.LOCAL_DB_PORT if settings.LOCAL_DB_PORT else tenant.db_port
+    
     # Construct db_url from tenant's database connection fields
     # Format: postgresql+psycopg2://user:password@host:port/db_name
-    db_url = f"postgresql+psycopg2://{tenant.db_user}:{tenant.db_password}@{tenant.db_host}:{tenant.db_port}/{tenant.db_name}"
+    db_url = f"postgresql+psycopg2://{tenant.db_user}:{tenant.db_password}@{db_host}:{db_port}/{tenant.db_name}"
     
     logger.info(f"Retrieved tenant {tenant.id} ({tenant.name})")
     

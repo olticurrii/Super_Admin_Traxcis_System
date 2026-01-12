@@ -28,3 +28,4 @@ class TenantUser(SuperAdminBase):
         return f"<TenantUser(email='{self.email}', tenant_id={self.tenant_id})>"
 
 
+
